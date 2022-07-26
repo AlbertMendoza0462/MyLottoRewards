@@ -1,0 +1,25 @@
+﻿<div class="row firstRow">
+    <div class="card">
+        <div class="card-body">@TicketsJugados Tickets Jugados</div>
+    </div>
+    <div class="card">
+        <div class="card-body">@JugadasRealizadas Jugadas Realizadas</div>
+    </div>
+    <div class="card">
+        <div class="card-body">@GananciasRegistradas Jugadas Ganadas</div>
+    </div>
+    <div class="card">
+        <div class="card-body">RD$ @TotalJugado Invertido En Juegos</div>
+    </div>
+    <div class="card">
+        <div class="card-body">RD$ @TotalGanado En Ganancias</div>
+    </div>
+</div>
+
+@code {
+    public int TicketsJugados { get; set; }
+    public int JugadasRealizadas { get; set; }
+    public double TotalJugado { get; set; }
+    public int GananciasRegistradas { get; set; }
+    public double TotalGanado { get; set; }
+}

@@ -1,0 +1,104 @@
+﻿@page "/Ganancias"
+@inject IJSRuntime JSRuntime
+@inject NavigationManager navigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject GananciasBLL gananciasBLL
+
+<EditForm Model="this">
+	<div class="card">
+
+		<div class="card-header">
+			<h4>Consulta de Ganancias</h4>
+		</div>
+		<div class="card-body">
+			<div class="row justify-content-between mb-3">
+				<div class="col-5">
+					<div class="input-group">
+						<span class="input-group-text">Desde</span>
+						<InputDate @bind-Value="Desde" aria-label="Fecha Desde" class="form-control"/>
+					</div>
+				</div>
+				<div class="col-5">
+					<div class="input-group">
+						<span class="input-group-text">Hasta</span>
+						<InputDate @bind-Value="Hasta" aria-label="Fecha Hasta" class="form-control"/>
+					</div>
+				</div>
+			</div>
+			<button class="btn btn-outline-primary" @onclick="buscar"> <i class="oi oi-magnifying-glass" /> Buscar </button>
+		</div>
+	</div>
+
+	<table class="table table-striped table-hover mt-4">
+
+		<thead class="thead">
+			<tr class="table">
+				<th>GananciaId</th>
+				<th>Loteria</th>
+				<th>Tipo de Jugada</th>
+				<th>Fecha</th>
+				<th>Monto</th>
+			</tr>
+		</thead>
+
+		<tbody>
+			@foreach (var item in Ganancias)
+			{
+				Total = Ganancias.Sum(g => g.Monto);
+				<tr>
+					<td><a href="Ganancia/@item.GananciaId">@item.GananciaId</a></td>
+					<td><a href="Ganancia/@item.GananciaId">@item.LoteriaDescripcion</a></td>
+					<td><a href="Ganancia/@item.GananciaId">@item.TipoJugadaDescripcion</a></td>
+					<td><a href="Ganancia/@item.GananciaId">@item.Fecha</a></td>
+					<td><a href="Ganancia/@item.GananciaId">@item.Monto</a></td>
+				</tr>
+			}
+		</tbody>
+		<tfoot>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td>
+				<div class="input-group">
+					<InputNumber @bind-Value="Total" class="form-control" disabled />
+					<span class="input-group-text">Total</span>
+				</div>
+			</td>
+		</tfoot>
+	</table>
+</EditForm>
+@code {
+	public async Task validarSesion()
+	{
+		string? userId = await sessionStorage.GetItemAsync<string>("UserIdApi");
+		if (userId == null)
+		{
+			RedirectTo("/");
+		}
+	}
+
+	public void RedirectTo(string path)
+	{
+		JSRuntime.InvokeAsync<object>("clientJsfunctions.RedirectTo", path);
+	}
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+		validarSesion();
+
+		Desde = new DateTime();
+		Hasta = DateTime.Now;
+	}
+
+	public DateTime Desde { get; set; }
+	public DateTime Hasta { get; set; }
+	public double Total { get; set; }
+	public List<Ganancias> Ganancias { get; set; } = new List<Ganancias>();
+
+	public void buscar()
+	{
+		List<Ganancias>? lista = gananciasBLL.GetList();
+		Ganancias = (lista != null) ? lista : new List<Ganancias>();
+	}
+}

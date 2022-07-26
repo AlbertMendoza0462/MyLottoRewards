@@ -1,0 +1,35 @@
+﻿.card {
+    width:fit-content;
+}
+
+.firstRow {
+    gap:20px;
+    justify-content:space-around;
+    color:white;
+}
+
+/*.firstRow .card {
+    background: #FEAC5E;
+    background: -webkit-linear-gradient(to right, #4BC0C8, #C779D0, #FEAC5E);
+    background: linear-gradient(45deg, #4BC0C8, #C779D0, #FEAC5E);
+}*/
+
+    .firstRow .card:nth-child(1) {
+        background: #D879F2;
+    }
+
+    .firstRow .card:nth-child(2) {
+        background: #4aaa44;
+    }
+
+    .firstRow .card:nth-child(3) {
+        background: #FEAC5E;
+    }
+
+    .firstRow .card:nth-child(4) {
+        background: #4BC0C8;
+    }
+
+    .firstRow .card:nth-child(5) {
+        background: #eec700;
+    }

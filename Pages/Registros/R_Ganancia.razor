@@ -1,0 +1,222 @@
+﻿@page "/Ganancia"
+@page "/Ganancia/{GananciaId:int}"
+@inject IJSRuntime JSRuntime
+@inject NavigationManager navigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject GananciasBLL gananciasBLL
+@inject LoteriasBLL loteriasBLL
+@inject TiposJugadasBLL tiposJugadasBLL
+@inject UsuariosBLL usuariosBLL
+@inject IToastService toastService
+
+<EditForm Model="ganancia" OnValidSubmit="@guardar">
+	<DataAnnotationsValidator />
+
+	<div class="card mb-3">
+		<div class="card-header">
+			<h3 class="card-title">Registro de Ganancia</h3>
+		</div>
+
+		<div class="card-body">
+			<div class="row mb-3 justify-content-between">
+				<div class="col-3">
+					<div class="input-group">
+						<span class="input-group-text">GananciaId</span>
+						<InputNumber @bind-Value="ganancia.GananciaId" class="form-control" />
+						<button type="button" @onclick="btnBuscar" class="btn btn-info"><i class="oi oi-magnifying-glass" /></button>
+					</div>
+					<ValidationMessage For="@(() => ganancia.GananciaId)" />
+				</div>
+				<div class="col-3">
+					<div class="input-group">
+						<span class="input-group-text">Fecha</span>
+						<InputDate @bind-Value="ganancia.Fecha" class="form-control" />
+					</div>
+				</div>
+				<ValidationMessage For="@(() => ganancia.Fecha)" />
+			</div>
+
+			<div class="row mb-3">
+				<div class="col-4">
+					<div class="input-group">
+						<span class="input-group-text">Loteria</span>
+						<InputSelect @bind-Value="ganancia.LoteriaId" @onclick="cargarTiposJugadas" class="form-control">
+							<option></option>
+							@foreach (var itemLoteria in loterias)
+							{
+								<option value="@itemLoteria.LoteriaId">@itemLoteria.Descripcion</option>
+							}
+						</InputSelect>
+					</div>
+					<ValidationMessage For="@(() => ganancia.LoteriaId)" />
+				</div>
+				<div class="col-4">
+					<div class="input-group">
+						<span class="input-group-text">TipoJugada</span>
+						<InputSelect @bind-Value="ganancia.TipoJugadaId" class="form-control">
+							<option></option>
+							@foreach (var itemTipoJugada in tiposJugadas)
+							{
+								<option value="@itemTipoJugada.TipoJugadaId">@itemTipoJugada.Descripcion</option>
+							}
+						</InputSelect>
+					</div>
+					<ValidationMessage For="@(() => ganancia.TipoJugadaId)" />
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-4">
+					<div class="input-group">
+						<span class="input-group-text">Monto</span>
+						<InputNumber @bind-Value="ganancia.Monto" class="form-control" />
+					</div>
+					<ValidationMessage For="@(() => ganancia.Monto)" />
+				</div>
+			</div>
+		</div>
+
+		<div class="card-footer">
+			<div class="row justify-content-center">
+				<div class="w-auto btn-group" role="group">
+					<button type="button" @onclick="nuevo" class="btn btn-outline-primary"> <i class="oi oi-file" /> Nuevo</button>
+					<button type="submit" class="btn btn-outline-success"> <i class="oi oi-document" /> Guardar</button>
+					<button type="button" @onclick="eliminar" class="btn btn-outline-danger"> <i class="oi oi-trash" /> Eliminar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</EditForm>
+
+@code {
+	[Parameter]
+	public int GananciaId { get; set; }
+	public Ganancias ganancia { get; set; }
+	public List<Loterias> loterias { get; set; }
+	public List<TiposJugadas> tiposJugadas { get; set; }
+	public int tmpLoteriaId { get; set; }
+
+	public async Task validarSesion()
+	{
+		string? userId = await sessionStorage.GetItemAsync<string>("UserIdApi");
+		if (userId == null)
+		{
+			RedirectTo("/");
+		}
+	}
+
+	public void RedirectTo(string path)
+	{
+		JSRuntime.InvokeAsync<object>("clientJsfunctions.RedirectTo", path);
+	}
+
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+		validarSesion();
+
+		List<Loterias>? tmpLoterias = loteriasBLL.GetList();
+		tiposJugadas = new List<TiposJugadas>();
+		tmpLoteriaId = 0;
+
+		if (tmpLoterias != null)
+		{
+			loterias = tmpLoterias;
+		}
+		else
+		{
+			loterias = new List<Loterias>();
+		}
+
+		nuevo();
+		ganancia.GananciaId = GananciaId;
+		if(ganancia.GananciaId > 0)
+		{
+			buscar(ganancia.GananciaId);
+		}
+	}
+
+	public void btnBuscar()
+	{
+		int tmpGananciaId = ganancia.GananciaId;
+		buscar(ganancia.GananciaId);
+		ganancia.GananciaId = tmpGananciaId;
+	}
+
+	public void cargarTiposJugadas()
+	{
+		if (ganancia.LoteriaId != tmpLoteriaId)
+		{
+			tmpLoteriaId = ganancia.LoteriaId;
+			ganancia.TipoJugadaId = 0;
+			List<TiposJugadas>? tmpTiposJugadas = tiposJugadasBLL.GetListByLoteria(ganancia.LoteriaId);
+			if (tmpTiposJugadas != null)
+			{
+				tiposJugadas = tmpTiposJugadas;
+			}
+			else
+			{
+				tiposJugadas = new List<TiposJugadas>();
+			}
+		}
+	}
+
+	public void buscar(int gananciaId)
+	{
+		Ganancias? tmpGanancia = gananciasBLL.Buscar(gananciaId);
+		if (tmpGanancia != null)
+		{
+			ganancia = tmpGanancia;
+			tiposJugadas = tiposJugadasBLL.GetListByLoteria(ganancia.LoteriaId);
+			toastService.ShowSuccess("Ganancia encontrada!");
+		}
+		else
+		{
+			nuevo();
+			toastService.ShowWarning("Ganancia no encontrada!");
+		}
+	}
+
+	public async void asignarUsuarioId()
+	{
+		var UserIdApi = await sessionStorage.GetItemAsync<string>("UserIdApi");
+		var user = usuariosBLL.BuscarPorUserIdApi(UserIdApi);
+		if (user != null)
+		{
+			ganancia.UsuarioId = user.UsuarioId;
+		}
+	}
+
+	public void nuevo()
+	{
+		ganancia = new Ganancias();
+		tiposJugadas = new List<TiposJugadas>();
+		tmpLoteriaId = 0;
+		asignarUsuarioId();
+	}
+
+	public void guardar()
+	{
+		if (gananciasBLL.Guardar(ganancia))
+		{
+			nuevo();
+			toastService.ShowSuccess("Ganancia registrada!");
+		}
+		else
+		{
+			toastService.ShowError("La ganancia no se pudo guardar!");
+		}
+	}
+
+	public void eliminar()
+	{
+		if (ganancia.GananciaId > 0 && gananciasBLL.Eliminar(ganancia))
+		{
+			nuevo();
+			toastService.ShowSuccess("Ganancia eliminada!");
+		}
+		else
+		{
+			toastService.ShowError("La ganancia no se pudo eliminar!");
+		}
+	}
+}
