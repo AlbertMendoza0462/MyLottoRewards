@@ -5,7 +5,7 @@ namespace MyLotoRewards.Models
 {
     public class Ganancias
     {
-        [Key]
+        [Key, Range(0, Int32.MaxValue, ErrorMessage = "El Id no puede ser menor que 0.")]
         public int GananciaId { get; set; }
         [Range(1, Int32.MaxValue, ErrorMessage = "La ganancia necesita un usuario."), Required]
         public int UsuarioId { get; set; }

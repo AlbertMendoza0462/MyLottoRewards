@@ -1,53 +1,92 @@
-﻿@inject IJSRuntime JSRuntime
+﻿@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Identity
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
 @inject NavigationManager navigationManager
-@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject UsuariosBLL usuariosBLL
+@inject NotificationService notificationService
 
-@if (!IsLogged)
-{
-	<a class="btn btnLogin btn-outline-dark w-25 h-75" onclick="loginWithGoogle()" role="button">
-		<img class="h-100" alt="Google sign-in" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png" />
-		Login with Google
-	</a>
-	<a class="btn btnLogin btn-outline-dark w-25 h-75" onclick="loginWithFacebook()" role="button">
-		<img class="h-100" alt="Facebook sign-in" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/640px-2021_Facebook_icon.svg.png" />
-		Login with Facebook
-	</a>
-}
-else
-{
-	<a class="btn btn-danger" @onclick="logout" role="button">
-		Logout
-	</a>
-}
+<AuthorizeView>
+	<NotAuthorized>
+		<a href="auth/GoogleSignIn" class="btn btnLogin btn-outline-dark w-25 h-75" role="button">
+			<img class="h-100" alt="Google sign-in" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png" />
+			Login with Google
+		</a>
+		<a href="auth/FacebookSignIn" class="btn btnLogin btn-outline-dark w-25 h-75" role="button">
+			<img class="h-100" alt="Facebook sign-in" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/640px-2021_Facebook_icon.svg.png" />
+			Login with Facebook
+		</a>
+	</NotAuthorized>
+	<Authorized>
+		<a href="/" class="btn btnLogin">
+			@nombre, id @UsuarioId
+		</a>
+		<a href="auth/logout" class="btn btn-danger" role="button">
+			Logout
+		</a>
+	</Authorized>
+</AuthorizeView>
 
 @code {
-	public bool IsLogged { get; set; } = false;
 
-	public async Task validarSesion()
+	[CascadingParameter]
+	public Task<AuthenticationState> authenticationState { get; set; }
+	public string nombre { get; set; }
+	public int UsuarioId { get; set; }
+
+	protected override async Task OnInitializedAsync() 
 	{
-		string? userId = await sessionStorage.GetItemAsync<string>("UserIdApi");
-		if (userId != null)
+		var authState = await authenticationState;
+		var user = authState.User;
+
+		if(user.Identity.IsAuthenticated)
 		{
-			IsLogged = true;
-		}
-	}
+			Usuarios usuario = new Usuarios();
+			var claim = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier);
+			usuario.UserIdApi = claim?.Value;
+			var claim2 = user.FindFirst(c => c.Type == ClaimTypes.Name);
+			usuario.Nombre = claim2?.Value;
+			var claim3 = user.FindFirst(c => c.Type == ClaimTypes.Email);
+			usuario.Email = claim3?.Value;
+			nombre = usuario.Nombre;
+
+			Console.WriteLine("usuariosBLL.BuscarPorUserIdApi(usuario.UserIdApi):" + usuariosBLL.BuscarPorUserIdApi(usuario.UserIdApi));
+
+			Usuarios? us = usuariosBLL.BuscarPorUserIdApi(usuario.UserIdApi);
+			if (us == null)
+			{
+				if (usuariosBLL.Guardar(usuario))
+				{
+					notificationService.Notify(new NotificationMessage {
+						Severity = NotificationSeverity.Success,
+						Summary = "Nuevo usuario registrado!",
+						Duration = 4000
+					});
+				}
+				else
+				{
+					notificationService.Notify(new NotificationMessage {
+						Severity = NotificationSeverity.Error,
+						Summary = "No se pudo guardar el usuario!",
+						Duration = 4000
+					});
+				}
+
+			}
+			else
+			{
+				UsuarioId = us.UsuarioId;
+			}
+
+        }
+        
+    }
 
 	public void RedirectTo(string path)
 	{
 		JSRuntime.InvokeAsync<object>("clientJsfunctions.RedirectTo", path);
-	}
-
-	protected override void OnInitialized()
-	{
-		base.OnInitialized();
-		validarSesion();
-	}
-
-	public async void logout()
-	{
-		await sessionStorage.RemoveItemAsync("Nombre");
-		await sessionStorage.RemoveItemAsync("Email");
-		await sessionStorage.RemoveItemAsync("UserIdApi");
-		RedirectTo(navigationManager.Uri);
 	}
 }

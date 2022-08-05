@@ -1,6 +1,8 @@
-﻿using MyLotoRewards.DAL;
+﻿using Microsoft.EntityFrameworkCore;
+using MyLotoRewards.DAL;
 using MyLotoRewards.Models;
-using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections;
 
 namespace MyLotoRewards.BLL
 {
@@ -17,46 +19,75 @@ namespace MyLotoRewards.BLL
             return _context.Tickets.Any(ticket => ticket.TicketId == ticketID);
         }
 
-        public bool Guardar(Tickets ticket)
+        public bool Guardar(int usuarioId, Tickets ticket)
         {
-            return (!Existe(ticket.TicketId)) ? Insertar(ticket) : Modificar(ticket);
+            return (!Existe(ticket.TicketId)) ? Insertar(usuarioId, ticket) : Modificar(usuarioId, ticket);
         }
 
-        public bool Insertar(Tickets ticket)
+        public bool Insertar(int usuarioId, Tickets ticket)
         {
+            UsuariosBLL usuariosBLL = new UsuariosBLL(_context);
+            var usuario = usuariosBLL.Buscar(usuarioId);
+            foreach (var jg in ticket.Jugadas)
+            {
+                ticket.Total += jg.Monto;
+            }
+            ticket.Total--;
+            usuario.TotalInvertido += ticket.Total;
+
+            _context.Entry(usuario).State = EntityState.Modified;
             _context.Tickets.Add(ticket);
 
             var guardo = _context.SaveChanges() > 0;
             _context.Entry(ticket).State = EntityState.Detached;
+            _context.Entry(usuario).State = EntityState.Detached;
             return guardo;
         }
 
-        public bool Modificar(Tickets ticket)
+        public bool Modificar(int usuarioId, Tickets ticket)
         {
+            UsuariosBLL usuariosBLL = new UsuariosBLL(_context);
+            var usuario = usuariosBLL.Buscar(usuarioId);
+            
+            usuario.TotalInvertido -= ticket.Total;
+
             _context.Database.ExecuteSqlRaw($"DELETE FROM Jugadas WHERE TicketId={ticket.TicketId};");
 
-			foreach (var item in ticket.Jugadas)
-			{
-                _context.Entry(item).State = EntityState.Added;
-			}
+            ticket.Total = 0;
+            foreach (var jg in ticket.Jugadas)
+            {
+                ticket.Total += jg.Monto;
+                _context.Entry(jg).State = EntityState.Added;
+            }
+            usuario.TotalInvertido += ticket.Total;
 
+            _context.Entry(usuario).State = EntityState.Modified;
             _context.Entry(ticket).State = EntityState.Modified;
 
             var guardo = _context.SaveChanges() > 0;
             _context.Entry(ticket).State = EntityState.Detached;
+            _context.Entry(usuario).State = EntityState.Detached;
             return guardo;
         }
 
-        public bool Eliminar(Tickets ticket)
+        public bool Eliminar(int usuarioId, Tickets ticket)
         {
             if (Existe(ticket.TicketId))
 			{
+                UsuariosBLL usuariosBLL = new UsuariosBLL(_context);
+                var usuario = usuariosBLL.Buscar(usuarioId);
+
+                usuario.TotalInvertido -= ticket.Total;
+
                 _context.Database.ExecuteSqlRaw($"DELETE FROM Jugadas WHERE TicketId={ticket.TicketId};");
 
                 _context.Entry(ticket).State = EntityState.Deleted;
+                _context.Entry(usuario).State = EntityState.Modified;
 
-                return _context.SaveChanges() > 0;
-			}
+                var elimino = _context.SaveChanges() > 0;
+                _context.Entry(usuario).State = EntityState.Detached;
+                return elimino;
+            }
 			else
 			{
                 return false;
@@ -64,39 +95,110 @@ namespace MyLotoRewards.BLL
 
         }
 
-        public Tickets? Buscar(int ticketId)
+        public Tickets? Buscar(int usuarioId, int ticketId)
         {
-            var tk = _context.Tickets
-                .Where(t => t.TicketId == ticketId)
+            var query = _context.Tickets.AsQueryable();
+
+            if (usuarioId > 0)
+                query = query.Where(t => t.UsuarioId == usuarioId);
+
+            query = query.Where(t => t.TicketId == ticketId)
                 .Include(t => t.Jugadas)
-                .AsNoTracking()
-                .SingleOrDefault();
-			
-            return (tk != null) ? prepararInstancia(tk) : tk;
+                .AsNoTracking();
+
+            var ticket = query.SingleOrDefault();
+
+
+            return (query != null) ? prepararInstancia(ticket) : ticket;
         }
 
-        /*
         public List<Tickets>? GetListFiltred(
-            DateTime fechaDesde, DateTime fechaHasta, string loteria, string tipoJugada, double montoDesde, double montoHasta
+            int usuarioId,
+            DateTime fechaDesde,
+            DateTime fechaHasta,
+            int loteriaId,
+            int tipoJugadaId,
+            double montoDesde,
+            double montoHasta
             )
         {
-            return _context.Tickets
-                .Where(t => 
-                        (fechaDesde <= t.Fecha && fechaHasta >= t.Fecha) &&
-                        (montoDesde <= t.Monto && montoHasta >= t.Monto) &&
-                        t.Loteria.Contains(loteria) &&
-                        t.TipoJugada.Contains(tipoJugada)
-                    )
-                .AsNoTracking()
-                .ToList();
-        }
-        */
+            var query = _context.Tickets.AsQueryable();
+            query = query.Where(t => t.UsuarioId == usuarioId);
+            if (montoHasta > 0)
+                query = query.Where(t => montoDesde <= t.Total && montoHasta >= t.Total);
 
-        public List<Tickets>? GetList()
+            query = query.Where(g => fechaDesde <= g.Fecha && fechaHasta >= g.Fecha)
+                .Include(g => g.Jugadas)
+                .AsNoTracking();
+
+            List<Tickets>? ticketsTmp = query.ToList();
+            List<Tickets>? tickets = new List<Tickets>();
+
+            if (ticketsTmp != null && ticketsTmp.Count > 0)
+            {
+                foreach (var tk in ticketsTmp)
+                {
+                    prepararInstancia(tk);
+                }
+            }
+
+            if (loteriaId > 0 || tipoJugadaId > 0)
+            {
+                foreach (var ticket in ticketsTmp)
+                {
+                    foreach (var jugada in ticket.Jugadas)
+                    {
+                        if (tipoJugadaId > 0 && jugada.TipoJugadaId == tipoJugadaId)
+                        {
+                            tickets.Add(ticket);
+                        }
+                        else if (tipoJugadaId == 0 && loteriaId > 0 && jugada.LoteriaId == loteriaId)
+                        {
+                            tickets.Add(ticket);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                tickets = ticketsTmp;
+            }
+
+            return tickets;
+        }
+
+        public List<Tickets>? GetListByFecha(int usuarioId, DateTime fechaDesde, DateTime fechaHasta)
         {
-            List<Tickets> tickets = _context.Tickets
-                .AsNoTracking()
-                .ToList();
+            var query = _context.Tickets.AsQueryable();
+
+            if (usuarioId > 0)
+                query = query.Where(t => t.UsuarioId == usuarioId);
+
+            query = query.Where(t => fechaDesde.Date <= t.Fecha.Date && fechaHasta.Date >= t.Fecha.Date)
+                .Include(t => t.Jugadas)
+                .AsNoTracking();
+
+            var tickets = query.ToList();
+
+            foreach (Tickets tk in tickets)
+            {
+                prepararInstancia(tk);
+            }
+
+            return tickets;
+        }
+
+        public List<Tickets>? GetList(int usuarioId)
+        {
+            var query = _context.Tickets.AsQueryable();
+
+            if (usuarioId > 0)
+                query = query.Where(t => t.UsuarioId == usuarioId);
+
+            query = query.Include(t => t.Jugadas)
+                .AsNoTracking();
+
+            var tickets = query.ToList();
 
             if(tickets != null && tickets.Count > 0)
 			{

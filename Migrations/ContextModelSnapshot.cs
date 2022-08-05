@@ -17,6 +17,18 @@ namespace MyLotoRewards.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.7");
 
+            modelBuilder.Entity("MyLotoRewards.Models.CantidadXLoterias", b =>
+                {
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.ToView("view_cant_loterias");
+                });
+
             modelBuilder.Entity("MyLotoRewards.Models.Ganancias", b =>
                 {
                     b.Property<int>("GananciaId")
@@ -48,11 +60,6 @@ namespace MyLotoRewards.Migrations
 
                     b.Property<double>("Monto")
                         .HasColumnType("REAL");
-
-                    b.Property<string>("Numeros")
-                        .IsRequired()
-                        .HasMaxLength(2147483647)
-                        .HasColumnType("TEXT");
 
                     b.Property<int>("TicketId")
                         .HasColumnType("INTEGER");
@@ -143,6 +150,9 @@ namespace MyLotoRewards.Migrations
 
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("TEXT");
+
+                    b.Property<double>("Total")
+                        .HasColumnType("REAL");
 
                     b.Property<int>("UsuarioId")
                         .HasColumnType("INTEGER");
@@ -422,6 +432,12 @@ namespace MyLotoRewards.Migrations
                         .IsRequired()
                         .HasMaxLength(2147483647)
                         .HasColumnType("TEXT");
+
+                    b.Property<double>("TotalGanado")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("TotalInvertido")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("UserIdApi")
                         .IsRequired()

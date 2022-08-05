@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace MyLotoRewards.Migrations
 {
-    public partial class Inicial : Migration
+    public partial class inicial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -15,6 +15,7 @@ namespace MyLotoRewards.Migrations
                 {
                     GananciaId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
+                    UsuarioId = table.Column<int>(type: "INTEGER", nullable: false),
                     TipoJugadaId = table.Column<int>(type: "INTEGER", nullable: false),
                     Monto = table.Column<double>(type: "REAL", nullable: false),
                     Fecha = table.Column<DateTime>(type: "TEXT", nullable: false)
@@ -30,7 +31,7 @@ namespace MyLotoRewards.Migrations
                 {
                     LoteriaId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Descripcion = table.Column<string>(type: "TEXT", nullable: false)
+                    Descripcion = table.Column<string>(type: "TEXT", maxLength: 2147483647, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -43,7 +44,9 @@ namespace MyLotoRewards.Migrations
                 {
                     TicketId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Fecha = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    UsuarioId = table.Column<int>(type: "INTEGER", nullable: false),
+                    Fecha = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Total = table.Column<double>(type: "REAL", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -57,11 +60,28 @@ namespace MyLotoRewards.Migrations
                     TipoJugadaId = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     LoteriaId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Descripcion = table.Column<string>(type: "TEXT", nullable: false)
+                    Descripcion = table.Column<string>(type: "TEXT", maxLength: 2147483647, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TiposJugadas", x => x.TipoJugadaId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Usuarios",
+                columns: table => new
+                {
+                    UsuarioId = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Nombre = table.Column<string>(type: "TEXT", maxLength: 2147483647, nullable: false),
+                    Email = table.Column<string>(type: "TEXT", maxLength: 2147483647, nullable: false),
+                    UserIdApi = table.Column<string>(type: "TEXT", maxLength: 2147483647, nullable: false),
+                    TotalGanado = table.Column<double>(type: "REAL", nullable: false),
+                    TotalInvertido = table.Column<double>(type: "REAL", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Usuarios", x => x.UsuarioId);
                 });
 
             migrationBuilder.CreateTable(
@@ -72,8 +92,7 @@ namespace MyLotoRewards.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     TicketId = table.Column<int>(type: "INTEGER", nullable: false),
                     TipoJugadaId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Monto = table.Column<double>(type: "REAL", nullable: false),
-                    Numeros = table.Column<string>(type: "TEXT", nullable: false)
+                    Monto = table.Column<double>(type: "REAL", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -350,6 +369,9 @@ namespace MyLotoRewards.Migrations
 
             migrationBuilder.DropTable(
                 name: "TiposJugadas");
+
+            migrationBuilder.DropTable(
+                name: "Usuarios");
 
             migrationBuilder.DropTable(
                 name: "Tickets");

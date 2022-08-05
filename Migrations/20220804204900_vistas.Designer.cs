@@ -11,13 +11,25 @@ using MyLotoRewards.DAL;
 namespace MyLotoRewards.Migrations
 {
     [DbContext(typeof(Context))]
-    [Migration("20220721143403_Validar numeros")]
-    partial class Validarnumeros
+    [Migration("20220804204900_vistas")]
+    partial class vistas
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.7");
+
+            modelBuilder.Entity("MyLotoRewards.Models.CantidadXLoterias", b =>
+                {
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.ToView("view_cant_loterias");
+                });
 
             modelBuilder.Entity("MyLotoRewards.Models.Ganancias", b =>
                 {
@@ -34,6 +46,9 @@ namespace MyLotoRewards.Migrations
                     b.Property<int>("TipoJugadaId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("GananciaId");
 
                     b.ToTable("Ganancias");
@@ -47,10 +62,6 @@ namespace MyLotoRewards.Migrations
 
                     b.Property<double>("Monto")
                         .HasColumnType("REAL");
-
-                    b.Property<string>("Numeros")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<int>("TicketId")
                         .HasColumnType("INTEGER");
@@ -73,6 +84,7 @@ namespace MyLotoRewards.Migrations
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
+                        .HasMaxLength(2147483647)
                         .HasColumnType("TEXT");
 
                     b.HasKey("LoteriaId");
@@ -141,6 +153,12 @@ namespace MyLotoRewards.Migrations
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("TEXT");
 
+                    b.Property<double>("Total")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("TicketId");
 
                     b.ToTable("Tickets");
@@ -154,6 +172,7 @@ namespace MyLotoRewards.Migrations
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
+                        .HasMaxLength(2147483647)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("LoteriaId")
@@ -398,6 +417,38 @@ namespace MyLotoRewards.Migrations
                             Descripcion = "PICK 3 DÍA",
                             LoteriaId = 10
                         });
+                });
+
+            modelBuilder.Entity("MyLotoRewards.Models.Usuarios", b =>
+                {
+                    b.Property<int>("UsuarioId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("TotalGanado")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("TotalInvertido")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("UserIdApi")
+                        .IsRequired()
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("UsuarioId");
+
+                    b.ToTable("Usuarios");
                 });
 
             modelBuilder.Entity("MyLotoRewards.Models.Jugadas", b =>

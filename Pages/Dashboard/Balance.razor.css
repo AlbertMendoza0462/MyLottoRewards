@@ -1,8 +1,4 @@
-﻿.card {
-    width:fit-content;
-}
-
-.firstRow {
+﻿.firstRow {
     gap:20px;
     justify-content:space-around;
     color:white;
@@ -13,7 +9,7 @@
     background: -webkit-linear-gradient(to right, #4BC0C8, #C779D0, #FEAC5E);
     background: linear-gradient(45deg, #4BC0C8, #C779D0, #FEAC5E);
 }*/
-
+/*
     .firstRow .card:nth-child(1) {
         background: #D879F2;
     }
@@ -33,3 +29,7 @@
     .firstRow .card:nth-child(5) {
         background: #eec700;
     }
+
+    .firstRow .card:nth-child(6) {
+        background: linear-gradient(45deg, #4BC0C8, #C779D0);
+    }*/

@@ -1,0 +1,27 @@
+﻿@using MyLotoRewards.Models
+
+<div class="card standingDiv p-3">
+	<div class="text-center titulo" style="color:@colorTitulo;">@Titulo</div>
+	<RadzenDataGrid Data="@standing" TItem="Standing" PageSize="5" AllowPaging="true" ShowPagingSummary="true">
+		<Columns>
+			<RadzenDataGridColumn TItem="Standing" Property="Indice" Title="Puesto" Width="80px" Frozen="true" TextAlign="TextAlign.Center" />
+			<RadzenDataGridColumn TItem="Standing" Property="UsuarioId" Title="ID" Width="80px" TextAlign="TextAlign.Center" />
+			<RadzenDataGridColumn TItem="Standing" Property="Balance" Title="@TituloColumna" TextAlign="TextAlign.Center">
+				<Template Context="user">
+                    @String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C}", user.Balance)
+                </Template>
+			</RadzenDataGridColumn>
+		</Columns>
+	</RadzenDataGrid>
+</div>
+
+@code {
+	[Parameter]
+	public List<Standing> standing { get; set; }
+	[Parameter]
+	public string Titulo { get; set; }
+	[Parameter]
+	public string TituloColumna { get; set; }
+	[Parameter]
+	public string colorTitulo { get; set; }
+}

@@ -11,9 +11,8 @@
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
     <link href="css/site.css" rel="stylesheet" />
     <link href="MyLotoRewards.styles.css" rel="stylesheet" />
-    <link href="_content/Blazored.Toast/blazored-toast.css" rel="stylesheet" />
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/default-base.css">
     <script src="scripts/MyLotoRewardsScripts.js"></script>
-    <link rel="stylesheet" rel='nofollow' href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">  
     <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
 </head>
 <body>
@@ -31,117 +30,6 @@
     </div>
     
     <script src="_framework/blazor.server.js"></script>
-
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script type="module">
-      // Your web app's Firebase configuration
-      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-      const firebaseConfig = {
-        apiKey: "AIzaSyBZ3oZ8Jg0k0ajN7JEBNT57uZie0KT9bUc",
-        authDomain: "testfirebase-d2f56.firebaseapp.com",
-        projectId: "testfirebase-d2f56",
-        storageBucket: "testfirebase-d2f56.appspot.com",
-        messagingSenderId: "607808170022",
-        appId: "1:607808170022:web:b040a4d115a454ff1ddee7",
-        measurementId: "G-RQEHCCQD1D"
-      };
-
-      // Initialize Firebase
-      firebase.initializeApp(firebaseConfig);
-    </script>
-
-    
-    @*<script>
-      window.fbAsyncInit = function() {
-        FB.init({
-          appId      : '574780727686487',
-          cookie     : true,
-          xfbml      : true,
-          version    : '{1.1.1}'
-        });
-      
-        FB.AppEvents.logPageView();   
-      
-      };
-
-      (function(d, s, id){
-         var js, fjs = d.getElementsByTagName(s)[0];
-         if (d.getElementById(id)) {return;}
-         js = d.createElement(s); js.id = id;
-         js.src = "https://connect.facebook.net/en_US/sdk.js";
-         fjs.parentNode.insertBefore(js, fjs);
-       }(document, 'script', 'facebook-jssdk'));
-    </script>*@
-
-    <script type="text/javascript">
-        const loginWithGoogle = function() {
-            var provider = new firebase.auth.GoogleAuthProvider();
-
-            firebase.auth()
-                .signInWithPopup(provider)
-                .then((result) => {
-                    /** type {firebase.auth.OAuthCredential} */
-                    var credential = result.credential;
-
-                    // This gives you a Google Access Token. You can use it to access the Google API.
-                    var token = credential.accessToken;
-                    // The signed-in user info.
-                    var user = result.user;
-                    sessionStorage.setItem('Nombre', user.displayName);
-                    sessionStorage.setItem('Email', user.email);
-                    sessionStorage.setItem('UserIdApi', user.uid);
-                    sessionStorage.setItem('NewSession', "YES");
-                    window.location = "/";
-                    // ...
-                }).catch((error) => {
-                    // Handle Errors here.
-                    var errorCode = error.code;
-                    var errorMessage = error.message;
-                    // The email of the user's account used.
-                    var email = error.email;
-                    // The firebase.auth.AuthCredential type that was used.
-                    var credential = error.credential;
-                    // ...
-                    console.log("error")
-                });
-        }
-
-        const loginWithFacebook = function(){
-            var provider = new firebase.auth.FacebookAuthProvider();
-
-            firebase.auth()
-                .signInWithPopup(provider)
-                .then((result) => {
-                /** type {firebase.auth.OAuthCredential} */
-                var credential = result.credential;
-
-                // The signed-in user info.
-                var user = result.user;
-                sessionStorage.setItem('Nombre', user.displayName);
-                sessionStorage.setItem('Email', user.email);
-                sessionStorage.setItem('UserIdApi', user.uid);
-                sessionStorage.setItem('NewSession', "YES");
-                window.location = "/";
-                // This gives you a Facebook Access Token. You can use it to access the Facebook API.
-                var accessToken = credential.accessToken;
-
-                // ...
-                })
-                .catch((error) => {
-                // Handle Errors here.
-                var errorCode = error.code;
-                var errorMessage = error.message;
-                // The email of the user's account used.
-                var email = error.email;
-                // The firebase.auth.AuthCredential type that was used.
-                var credential = error.credential;
-
-                // ...
-                });
-        }
-    </script>
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
 </body>
 </html>

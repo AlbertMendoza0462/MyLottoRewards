@@ -1,0 +1,29 @@
+﻿@using System.Globalization
+@inject LoteriasBLL loteriasBLL
+
+<RadzenChart>
+	<RadzenColumnSeries Data="@cantidadXLoterias" CategoryProperty="Descripcion" Title="Loterias" LineType="LineType.Dashed" ValueProperty="Cantidad">
+		<RadzenSeriesDataLabels Visible="true" />
+	</RadzenColumnSeries>
+	<RadzenColumnOptions Radius="5" />
+	<RadzenValueAxis Formatter="@FormatAsUSD">
+		<RadzenGridLines Visible="true" />
+		<RadzenAxisTitle Text="Loterias más jugadas" />
+	</RadzenValueAxis>
+</RadzenChart>
+
+@code {
+    public List<CantidadXLoterias> cantidadXLoterias { get; set; } = new List<CantidadXLoterias>();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        cantidadXLoterias = loteriasBLL.GetCantLoterias();
+
+    }
+
+    string FormatAsUSD(object value)
+    {
+        return ((double)value).ToString("N0");
+    }
+}

@@ -53,6 +53,13 @@ namespace MyLotoRewards.BLL
                 .SingleOrDefault();
         }
 
+        public List<CantidadXLoterias> GetCantLoterias()
+        {
+            return _context.CantidadXLoterias
+                .AsNoTracking()
+                .ToList();
+        }
+
         public List<Loterias>? GetList()
         {
             return _context.Loterias

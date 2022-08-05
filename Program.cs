@@ -1,10 +1,13 @@
-using Blazored.SessionStorage;
-using Blazored.Toast;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.EntityFrameworkCore;
+using MyLotoRewards.Auth;
 using MyLotoRewards.BLL;
 using MyLotoRewards.DAL;
+using Radzen;
+using System.Security.Claims;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,8 +15,24 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddBlazoredToast();
-builder.Services.AddBlazoredSessionStorage();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthentication("Cookies")
+    .AddCookie(opt =>
+    {
+        opt.Cookie.Name = "MyLottoRewardsLogin";
+        opt.LoginPath = "/auth/login";
+    })
+    .AddFacebook(opt =>
+    {
+        opt.AppId = builder.Configuration["Facebook:Id"];
+        opt.AppSecret = builder.Configuration["Facebook:Secret"];
+    })
+    .AddGoogle(opt =>
+    {
+        opt.ClientId = builder.Configuration["Google:Id"];
+        opt.ClientSecret = builder.Configuration["Google:Secret"];
+        opt.Scope.Add("profile");
+    });
 
 var ConStr = builder.Configuration.GetConnectionString("ConStr");
 builder.Services.AddDbContext<Context>(conn =>
@@ -25,6 +44,9 @@ builder.Services.AddScoped<TicketsBLL>();
 builder.Services.AddScoped<GananciasBLL>();
 builder.Services.AddScoped<LoteriasBLL>();
 builder.Services.AddScoped<TiposJugadasBLL>();
+
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<DialogService>();
 
 var app = builder.Build();
 
@@ -41,6 +63,15 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+});
+
+app.MapControllers();
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");

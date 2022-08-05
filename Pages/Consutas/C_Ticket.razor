@@ -1,8 +1,14 @@
 ﻿@page "/Tickets"
+@attribute [Authorize]
+@using System.Security.Claims
 @inject IJSRuntime JSRuntime
 @inject NavigationManager navigationManager
-@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 @inject TicketsBLL ticketsBLL
+@inject UsuariosBLL usuariosBLL
+@inject LoteriasBLL loteriasBLL
+@inject TiposJugadasBLL tiposJugadasBLL
+@inject NotificationService notificationService
+@inject DialogService dialogService
 
 <EditForm Model="this">
 	<div class="card">
@@ -14,18 +20,60 @@
 			<div class="row justify-content-between mb-3">
 				<div class="col-5">
 					<div class="input-group">
-						<span class="input-group-text">Desde</span>
-						<InputDate @bind-Value="Desde" aria-label="Fecha Desde" class="form-control"/>
+						<span class="input-group-text">Desde Fecha</span>
+						<InputDate @bind-Value="Desde" aria-label="Fecha Desde" class="form-control" />
 					</div>
 				</div>
 				<div class="col-5">
 					<div class="input-group">
-						<span class="input-group-text">Hasta</span>
-						<InputDate @bind-Value="Hasta" aria-label="Fecha Hasta" class="form-control"/>
+						<span class="input-group-text">Hasta Fecha</span>
+						<InputDate @bind-Value="Hasta" aria-label="Fecha Hasta" class="form-control" />
 					</div>
 				</div>
 			</div>
-			<button class="btn btn-outline-primary" @onclick="buscar"> <i class="oi oi-magnifying-glass" /> Buscar </button>
+			<div class="row justify-content-between mb-3">
+				<div class="col-5">
+					<div class="input-group">
+						<span class="input-group-text">Desde Monto</span>
+						<InputNumber @bind-Value="MontoDesde" class="form-control" />
+					</div>
+				</div>
+				<div class="col-5">
+					<div class="input-group">
+						<span class="input-group-text">Hasta Monto</span>
+						<InputNumber @bind-Value="MontoHasta" class="form-control" />
+					</div>
+				</div>
+			</div>
+			<div class="row justify-content-between mb-3">
+				<div class="col-5">
+					<div class="input-group">
+						<span class="input-group-text">Loteria</span>
+						<InputSelect @bind-Value="LoteriaId" @onclick="cargarTiposJugadas" class="form-control">
+							<option value="0"></option>
+							@foreach (var itemLoteria in loterias)
+							{
+								<option value="@itemLoteria.LoteriaId">@itemLoteria.Descripcion</option>
+							}
+						</InputSelect>
+					</div>
+				</div>
+				<div class="col-5">
+					<div class="input-group">
+						<span class="input-group-text">Tipo de Jugada</span>
+						<InputSelect @bind-Value="TipoJugadaId" class="form-control">
+							<option value="0"></option>
+							@foreach (var itemTipoJugada in tiposJugadas)
+							{
+								<option value="@itemTipoJugada.TipoJugadaId">@itemTipoJugada.Descripcion</option>
+							}
+						</InputSelect>
+					</div>
+				</div>
+			</div>
+			<button class="btn btn-primary" @onclick="buscar"> <i class="oi oi-magnifying-glass" /> Buscar </button>
+			<button class="btn btn-outline-success" @onclick="GenerarPdf"> <i class="oi oi-print" /> Imprimir </button>
+			<button class="btn btn-outline-primary" @onclick="limpiar"> <i class="oi oi-reload" /> Reiniciar </button>
 		</div>
 	</div>
 
@@ -35,50 +83,193 @@
 			<tr class="table">
 				<th>TicketId</th>
 				<th>Fecha</th>
+				<th>Total</th>
 			</tr>
 		</thead>
 
 		<tbody>
 			@foreach (var item in Tickets)
 			{
+				Total = Tickets.Sum(t => t.Total);
 				<tr>
 					<td><a href="Ticket/@item.TicketId">@item.TicketId</a></td>
 					<td><a href="Ticket/@item.TicketId">@item.Fecha</a></td>
+					<td><a href="Ticket/@item.TicketId">@item.Total</a></td>
 				</tr>
 			}
 		</tbody>
+		<tfoot>
+			<td></td>
+			<td></td>
+			<td>
+				<div class="input-group">
+					<InputNumber @bind-Value="Total" class="form-control" disabled />
+					<span class="input-group-text">Total</span>
+				</div>
+			</td>
+		</tfoot>
 	</table>
 </EditForm>
 @code {
-	public async Task validarSesion()
-    {
-        string? userId = await sessionStorage.GetItemAsync<string>("UserIdApi");
-        if (userId == null)
-        {
-            RedirectTo("/");
-        }
-    }
-
-    public void RedirectTo(string path)
-    {
-        JSRuntime.InvokeAsync<object>("clientJsfunctions.RedirectTo", path);
-    }
-	protected override void OnInitialized()
-	{
-		base.OnInitialized();
-        validarSesion();
-
-		Desde = new DateTime();
-		Hasta = DateTime.Now;
-	}
+	[CascadingParameter]
+	public Task<AuthenticationState> authenticationState { get; set; }
 
 	public DateTime Desde { get; set; }
 	public DateTime Hasta { get; set; }
+	public int LoteriaId { get; set; }
+	public int TipoJugadaId { get; set; }
+	public double MontoDesde { get; set; }
+	public double MontoHasta { get; set; }
+	public int tmpLoteriaId { get; set; }
+	public double Total { get; set; }
+	public List<Loterias> loterias { get; set; }
+	public List<TiposJugadas> tiposJugadas { get; set; }
 	public List<Tickets> Tickets { get; set; } = new List<Tickets>();
+	byte[] reportData;
+	string pdfContent = "";
+	public int UsuarioId { get; set; }
+
+	public async void GenerarPdf()
+	{
+		if(Tickets.Count > 0)
+		{
+			TicketsReport rptResult = new TicketsReport();
+			reportData = rptResult.Report(Tickets);
+			pdfContent = "data:application/pdf;base64," + System.Convert.ToBase64String(reportData);
+
+			await dialogService.OpenAsync(
+				"Reporte de Tickets",
+				ds => @<object class="col-12" data="@pdfContent" name="_blank" height="550" />
+	,
+				new DialogOptions() { Width = "80%", Height = "90%", Resizable = true, Draggable = true }
+			);
+		}
+		else
+		{
+			notificationService.Notify(new NotificationMessage
+			{
+				Severity = NotificationSeverity.Warning,
+				Detail = "No hay tickets en lista.",
+				Duration = 4000
+			});
+		}
+	}
+
+	public void RedirectTo(string path)
+	{
+		JSRuntime.InvokeAsync<object>("clientJsfunctions.RedirectTo", path);
+	}
+
+	protected async override Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+
+		var authState = await authenticationState;
+		var user = authState.User;
+
+		Usuarios? us = usuariosBLL.BuscarPorUserIdApi(user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value);
+		if (us != null)
+		{
+			UsuarioId = us.UsuarioId;
+		}
+	}
+
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+
+		limpiar();
+		loterias = loteriasBLL.GetList();
+		if (loterias == null)
+		{
+			loterias = new List<Loterias>();
+		}
+	}
+
+	public void limpiar()
+	{
+		Desde = new DateTime();
+		Hasta = DateTime.Now;
+		Tickets = new List<Tickets>();
+		tiposJugadas = new List<TiposJugadas>();
+		tmpLoteriaId = 0;
+		LoteriaId = 0;
+		TipoJugadaId = 0;
+		MontoDesde = 0;
+		MontoHasta = 0;
+		Total = 0;
+	}
+
+	public void cargarTiposJugadas()
+	{
+		if (LoteriaId != tmpLoteriaId)
+		{
+			tmpLoteriaId = LoteriaId;
+			List<TiposJugadas>? tmpTiposJugadas = tiposJugadasBLL.GetListByLoteria(LoteriaId);
+			if (tmpTiposJugadas != null)
+			{
+				tiposJugadas = tmpTiposJugadas;
+			}
+			else
+			{
+				tiposJugadas = new List<TiposJugadas>();
+			}
+		}
+	}
 
 	public void buscar()
 	{
-		List<Tickets>? lista = ticketsBLL.GetList();
+		if (Desde > Hasta)
+		{
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Error,
+				Detail = "La fecha inicial no puede ser mayor que la final.",
+				Duration = 4000
+			});
+			return;
+		}
+		if (MontoDesde > MontoHasta)
+		{
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Error,
+				Detail = "El monto inicial no puede ser mayor que el final.",
+				Duration = 4000
+			});
+			return;
+		}
+		tmpLoteriaId = 0;
+		List<Tickets>? lista = ticketsBLL.GetListFiltred(UsuarioId, Desde, Hasta, LoteriaId, TipoJugadaId, MontoDesde, MontoHasta);
 		Tickets = (lista != null) ? lista : new List<Tickets>();
+
+		if (Tickets.Count > 0)
+		{
+			if (Tickets.Count == 1)
+			{
+				notificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Success,
+						Detail = "Se encontró " + Tickets.Count + " ticket!",
+						Duration = 4000
+					});
+			}
+			else
+			{
+				notificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Success,
+						Detail = "Se encontraron " + Tickets.Count + " tickets!",
+						Duration = 4000
+					});
+			}
+		}
+		else
+		{
+			notificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Info,
+					Detail = "No se encontraron tickets!",
+					Duration = 4000
+				});
+		}
 	}
 }

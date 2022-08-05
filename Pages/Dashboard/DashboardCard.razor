@@ -1,0 +1,10 @@
+﻿<div class="card" style="background:@Color">
+    <div class="card-body">@Data</div>
+</div>
+
+@code {
+    [Parameter]
+    public string Data { get; set; }
+    [Parameter]
+    public string Color { get; set; }
+}

@@ -5,7 +5,7 @@ namespace MyLotoRewards.Models
 {
     public class Jugadas
     {
-        [Key, Range(0, Int32.MaxValue, ErrorMessage = "El TicketId debe ser mayor o igual que 0.")]
+        [Key, Range(0, Int32.MaxValue, ErrorMessage = "El Id no puede ser menor que 0.")]
         public int JugadaId { get; set; }
         [Required(ErrorMessage = "La jugada debe pertenecer a un ticket")]
         public int TicketId { get; set; }
@@ -14,8 +14,6 @@ namespace MyLotoRewards.Models
 
         [Range(1, Double.MaxValue, ErrorMessage = "El monto debe ser mayor que 0."), Required]
         public double Monto { get; set; }
-        [StringLength(Int32.MaxValue, MinimumLength = 1, ErrorMessage = "Digite los números de la jugada."), Required(ErrorMessage = "Digite los números de la jugada.")]
-        public string Numeros { get; set; }
         [NotMapped, Range(1, Int32.MaxValue, ErrorMessage = "Elija la loteria.")]
         public int LoteriaId { get; set; }
         [NotMapped]

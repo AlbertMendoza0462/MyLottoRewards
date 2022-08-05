@@ -10,12 +10,27 @@ namespace MyLotoRewards.DAL
         public DbSet<Ganancias> Ganancias { get; set; }
         public DbSet<Loterias> Loterias { get; set; }
         public DbSet<TiposJugadas> TiposJugadas { get; set; }
+        public DbSet<CantidadXLoterias> CantidadXLoterias { get; set; }
+        public DbSet<Winners> Winners { get; set; }
+        public DbSet<Losers> Losers { get; set; }
 
         public Context(DbContextOptions<Context> options) : base(options)
         {
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<CantidadXLoterias>()
+                .ToView("view_cant_loterias")
+                .HasNoKey();
+
+            modelBuilder.Entity<Winners>()
+                .ToView("view_winners")
+                .HasNoKey();
+
+            modelBuilder.Entity<Losers>()
+                .ToView("view_losers")
+                .HasNoKey();
+
             modelBuilder.Entity<Loterias>().HasData(
                 new Loterias()
                 {

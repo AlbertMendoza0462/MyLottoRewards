@@ -1,25 +1,34 @@
-﻿<div class="row firstRow">
-    <div class="card">
-        <div class="card-body">@TicketsJugados Tickets Jugados</div>
-    </div>
-    <div class="card">
-        <div class="card-body">@JugadasRealizadas Jugadas Realizadas</div>
-    </div>
-    <div class="card">
-        <div class="card-body">@GananciasRegistradas Jugadas Ganadas</div>
-    </div>
-    <div class="card">
-        <div class="card-body">RD$ @TotalJugado Invertido En Juegos</div>
-    </div>
-    <div class="card">
-        <div class="card-body">RD$ @TotalGanado En Ganancias</div>
-    </div>
+﻿<div class="d-flex flex-column gap-3">
+	<div class="row firstRow">
+		<DashboardCard Data="@d1" Color="#D879F2"></DashboardCard>
+		<DashboardCard Data="@d2" Color="#4aaa44"></DashboardCard>
+		<DashboardCard Data="@d3" Color="#FEAC5E"></DashboardCard>
+		<DashboardCard Data="@d4" Color="#4BC0C8"></DashboardCard>
+		<DashboardCard Data="@d5" Color="#eec700"></DashboardCard>
+	</div>
+	<div class="row justify-content-center">
+		<DashboardCard Data="@d6" Color="linear-gradient(45deg, #4BC0C8, #C779D0)"></DashboardCard>
+	</div>
 </div>
 
 @code {
-    public int TicketsJugados { get; set; }
-    public int JugadasRealizadas { get; set; }
-    public double TotalJugado { get; set; }
-    public int GananciasRegistradas { get; set; }
-    public double TotalGanado { get; set; }
+	[Parameter]
+	public double[] dashboardData { get; set; } = new double[6];
+	public string d1 { get; set; }
+	public string d2 { get; set; }
+	public string d3 { get; set; }
+	public string d4 { get; set; }
+	public string d5 { get; set; }
+	public string d6 { get; set; }
+
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+		d1 = $"{dashboardData[0]} Tickets Jugados";
+		d2 = $"{dashboardData[1]} Jugadas realizadas";
+		d3 = $"{dashboardData[2]} Jugadas Ganadas";
+		d4 = $"RD{dashboardData[3].ToString("C")} Invertido";
+		d5 = $"RD{dashboardData[4].ToString("C")} Obtenido al Ganar";
+		d6 = $"RD{dashboardData[5].ToString("C")} Ganancia Total";
+	}
 }

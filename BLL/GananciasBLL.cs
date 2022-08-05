@@ -17,68 +17,146 @@ namespace MyLotoRewards.BLL
             return _context.Ganancias.Any(ganancia => ganancia.GananciaId == gananciaID);
         }
 
-        public bool Guardar(Ganancias ganancia)
+        public bool Guardar(int usuarioId, Ganancias ganancia)
         {
-            return (!Existe(ganancia.GananciaId)) ? Insertar(ganancia) : Modificar(ganancia);
+            return (!Existe(ganancia.GananciaId)) ? Insertar(usuarioId, ganancia) : Modificar(usuarioId, ganancia);
         }
 
-        public bool Insertar(Ganancias ganancia)
+        public bool Insertar(int usuarioId, Ganancias ganancia)
         {
+            UsuariosBLL usuariosBLL = new UsuariosBLL(_context);
+            var usuario = usuariosBLL.Buscar(usuarioId);
+            usuario.TotalGanado += ganancia.Monto;
+
+            _context.Entry(usuario).State = EntityState.Modified;
             _context.Ganancias.Add(ganancia);
 
-            return _context.SaveChanges() > 0;
+            var guardo = _context.SaveChanges() > 0;
+            _context.Entry(ganancia).State = EntityState.Detached;
+            _context.Entry(usuario).State = EntityState.Detached;
+            return guardo;
         }
 
-        public bool Modificar(Ganancias ganancia)
+        public bool Modificar(int usuarioId, Ganancias ganancia)
         {
+            UsuariosBLL usuariosBLL = new UsuariosBLL(_context);
+            var usuario = usuariosBLL.Buscar(usuarioId);
+
+            var gananciaAnterior = this.Buscar(usuarioId, ganancia.GananciaId);
+            usuario.TotalGanado -= gananciaAnterior.Monto;
+            usuario.TotalGanado += ganancia.Monto;
+
+            _context.Entry(usuario).State = EntityState.Modified;
             _context.Entry(ganancia).State = EntityState.Modified;
 
             var guardo = _context.SaveChanges() > 0;
             _context.Entry(ganancia).State = EntityState.Detached;
+            _context.Entry(usuario).State = EntityState.Detached;
             return guardo;
         }
 
-        public bool Eliminar(Ganancias ganancia)
+        public bool Eliminar(int usuarioId, Ganancias ganancia)
         {
-            _context.Entry(ganancia).State = EntityState.Deleted;
+            if (Existe(ganancia.GananciaId))
+            {
+                UsuariosBLL usuariosBLL = new UsuariosBLL(_context);
+                var usuario = usuariosBLL.Buscar(usuarioId);
+                usuario.TotalGanado -= ganancia.Monto;
 
-            return _context.SaveChanges() > 0;
+                _context.Entry(usuario).State = EntityState.Modified;
+                _context.Entry(ganancia).State = EntityState.Deleted;
+
+                var elimino = _context.SaveChanges() > 0;
+                _context.Entry(usuario).State = EntityState.Detached;
+                return elimino;
+            }
+            else
+            {
+                return false;
+            }
         }
 
-        public Ganancias? Buscar(int gananciaId)
+        public Ganancias? Buscar(int usuarioId, int gananciaId)
         {
-            var gn = _context.Ganancias
-                .Where(p => p.GananciaId == gananciaId)
-                .AsNoTracking()
-                .SingleOrDefault();
+            var query = _context.Ganancias.AsQueryable();
 
-            return (gn != null) ? prepararInstancia(gn) : gn;
+            if (usuarioId > 0)
+                query = query.Where(t => t.UsuarioId == usuarioId);
+
+            query = query.Where(t => t.GananciaId == gananciaId)
+                .AsNoTracking();
+
+            var ganancia = query.SingleOrDefault();
+
+
+            return (query != null) ? prepararInstancia(ganancia) : ganancia;
         }
 
         public List<Ganancias>? GetListFiltred(
-            DateTime fechaDesde, DateTime fechaHasta, int tipoJugadaId, double montoDesde, double montoHasta
+            int usuarioId,
+            DateTime fechaDesde,
+            DateTime fechaHasta,
+            int loteriaId,
+            int tipoJugadaId,
+            double montoDesde,
+            double montoHasta
             )
         {
-            return _context.Ganancias
-                .Where(g =>
-                        (fechaDesde <= g.Fecha && fechaHasta >= g.Fecha) &&
-                        (montoDesde <= g.Monto && montoHasta >= g.Monto) &&
-                        g.TipoJugadaId == tipoJugadaId
-                    )
-                .AsNoTracking()
-                .ToList();
+            var query = _context.Ganancias.AsQueryable();
+            query = query.Where(g => g.UsuarioId == usuarioId);
+            if (tipoJugadaId > 0)
+                query = query.Where(g => g.TipoJugadaId == tipoJugadaId);
+            if (montoDesde > 0)
+                query = query.Where(g => montoDesde <= g.Monto && montoHasta >= g.Monto);
+
+            query = query.Where(g => fechaDesde <= g.Fecha && fechaHasta >= g.Fecha)
+                .AsNoTracking();
+
+            List<Ganancias>? gananciasTmp = query.ToList();
+            List<Ganancias>? ganancias = new List<Ganancias>();
+
+            if (gananciasTmp != null && gananciasTmp.Count > 0)
+            {
+                foreach (var gn in gananciasTmp)
+                {
+                    prepararInstancia(gn);
+                }
+            }
+
+            if (loteriaId > 0 && tipoJugadaId == 0)
+            {
+                foreach (var ganancia in gananciasTmp)
+                {
+                    if (loteriaId > 0 && ganancia.LoteriaId == loteriaId)
+                    {
+                        ganancias.Add(ganancia);
+                    }
+                }
+            }
+            else
+            {
+                ganancias = gananciasTmp;
+            }
+
+            return ganancias;
         }
 
-        public List<Ganancias>? GetList()
+        public List<Ganancias>? GetList(int usuarioId)
         {
-            List<Ganancias> ganancias = _context.Ganancias
-                .AsNoTracking()
-                .ToList();
+            var query = _context.Ganancias.AsQueryable();
+
+            if (usuarioId > 0)
+                query = query.Where(t => t.UsuarioId == usuarioId);
+
+            query = query.Where(t => t.UsuarioId == usuarioId)
+                .AsNoTracking();
+
+            var ganancias = query.ToList();
 
             if (ganancias != null && ganancias.Count > 0)
-			{
-				foreach (var gn in ganancias)
-				{
+            {
+                foreach (Ganancias gn in ganancias)
+                {
                     prepararInstancia(gn);
                 }
             }
@@ -87,7 +165,7 @@ namespace MyLotoRewards.BLL
         }
 
         private Ganancias prepararInstancia(Ganancias gn)
-		{
+        {
             if (gn != null)
             {
                 TiposJugadasBLL tiposJugadasBLL = new TiposJugadasBLL(_context);

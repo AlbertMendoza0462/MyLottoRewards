@@ -1,13 +1,16 @@
 ﻿@page "/Ticket"
 @page "/Ticket/{TicketId:int}"
+@attribute [Authorize]
+@using System.Security.Claims
 @inject IJSRuntime JSRuntime
 @inject NavigationManager navigationManager
-@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+@inject NotificationService notificationService
 @inject TicketsBLL ticketsBLL
 @inject LoteriasBLL loteriasBLL
 @inject TiposJugadasBLL tiposJugadasBLL
 @inject UsuariosBLL usuariosBLL
-@inject IToastService toastService
+@inject DialogService dialogService
+
 
 <EditForm Model="jugada" OnValidSubmit="@agregarJugada">
 	<DataAnnotationsValidator />
@@ -21,7 +24,7 @@
 					<div class="input-group">
 						<span class="input-group-text">Loteria</span>
 						<InputSelect @bind-Value="jugada.LoteriaId" @onclick="cargarTiposJugadas" class="form-control">
-							<option></option>
+							<option value="0"></option>
 							@foreach (var itemLoteria in loterias)
 							{
 								<option value="@itemLoteria.LoteriaId">@itemLoteria.Descripcion</option>
@@ -34,7 +37,7 @@
 					<div class="input-group">
 						<span class="input-group-text">TipoJugada</span>
 						<InputSelect @bind-Value="jugada.TipoJugadaId" class="form-control">
-							<option></option>
+							<option value="0"></option>
 							@foreach (var itemTipoJugada in tiposJugadas)
 							{
 								<option value="@itemTipoJugada.TipoJugadaId">@itemTipoJugada.Descripcion</option>
@@ -51,13 +54,6 @@
 						<InputNumber @bind-Value="jugada.Monto" class="form-control" />
 					</div>
 					<ValidationMessage For="@(() => jugada.Monto)" />
-				</div>
-				<div class="col-4">
-					<div class="input-group">
-						<span class="input-group-text">Numeros</span>
-						<InputText @bind-Value="jugada.Numeros" class="form-control" />
-					</div>
-					<ValidationMessage For="@(() => jugada.Numeros)" />
 				</div>
 			</div>
 		</div>
@@ -104,7 +100,6 @@
 						<th>Loteria</th>
 						<th>Tipo de Jugada</th>
 						<th>Monto</th>
-						<th>Números</th>
 						<th></th>
 					</tr>
 				</thead>
@@ -115,7 +110,6 @@
 							<td>@itemJugada.LoteriaDescripcion</td>
 							<td>@itemJugada.TipoJugadaDescripcion</td>
 							<td>@itemJugada.Monto</td>
-							<td>@itemJugada.Numeros</td>
 							<td><button type="button" @onclick="(() => quitarJugada(itemJugada))" class="btn btn-danger"> <i class="oi oi-trash" /></button></td>
 						</tr>
 					}
@@ -139,30 +133,49 @@
 @code {
 	[Parameter]
 	public int TicketId { get; set; }
+
+	[CascadingParameter]
+	public Task<AuthenticationState> authenticationState { get; set; }
+
+	public int UsuarioId { get; set; }
 	public Tickets ticket { get; set; }
 	public Jugadas jugada { get; set; }
 	public List<Loterias> loterias { get; set; }
 	public List<TiposJugadas> tiposJugadas { get; set; }
 	public int tmpLoteriaId { get; set; }
 
-	public async Task validarSesion()
-	{
-		string? userId = await sessionStorage.GetItemAsync<string>("UserIdApi");
-		if (userId == null)
-		{
-			RedirectTo("/");
-		}
-	}
-
 	public void RedirectTo(string path)
 	{
 		JSRuntime.InvokeAsync<object>("clientJsfunctions.RedirectTo", path);
 	}
 
+	protected async override Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+
+		var authState = await authenticationState;
+		var user = authState.User;
+
+		var claim = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier);
+		var UserIdApi = claim?.Value;
+		Usuarios? us = usuariosBLL.BuscarPorUserIdApi(UserIdApi);
+		if (us != null)
+		{
+			UsuarioId = us.UsuarioId;
+		}
+
+		nuevo();
+		ticket.TicketId = TicketId;
+		if(ticket.TicketId > 0)
+		{
+			buscar(ticket.TicketId);
+		}
+		AsignarUsuarioId();
+	}
+
 	protected override void OnInitialized()
 	{
 		base.OnInitialized();
-		validarSesion();
 
 		List<Loterias>? tmpLoterias = loteriasBLL.GetList();
 		tiposJugadas = new List<TiposJugadas>();
@@ -178,11 +191,6 @@
 		}
 
 		nuevo();
-		ticket.TicketId = TicketId;
-		if(ticket.TicketId > 0)
-		{
-			buscar(ticket.TicketId);
-		}
 	}
 
 	public void btnBuscar()
@@ -212,16 +220,24 @@
 
 	public void buscar(int ticketId)
 	{
-		Tickets? tmpTicket = ticketsBLL.Buscar(ticketId);
+		Tickets? tmpTicket = ticketsBLL.Buscar(UsuarioId, ticketId);
 		if (tmpTicket != null)
 		{
 			ticket = tmpTicket;
-			toastService.ShowSuccess("Ticket encontrado!");
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Success,
+				Summary = "Ticket cargado!",
+				Duration = 4000
+			});
 		}
 		else
 		{
 			nuevo();
-			toastService.ShowWarning("Ticket no encontrado!");
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Warning,
+				Summary = "Ticket no encontrado!",
+				Duration = 4000
+			});
 		}
 	}
 
@@ -236,58 +252,86 @@
 		jugada = new Jugadas();
 		jugada.LoteriaId = jug.LoteriaId;
 		jugada.TipoJugadaId = jug.TipoJugadaId;
-		toastService.ShowSuccess("Jugada agregada!");
+		
+		notificationService.Notify(new NotificationMessage {
+			Severity = NotificationSeverity.Success,
+			Summary = "Jugada agregada!",
+			Duration = 4000
+		});
 	}
 
-	public void quitarJugada(Jugadas jug)
+	public async Task quitarJugada(Jugadas jug)
 	{
-		ticket.Jugadas.Remove(jug);
-		toastService.ShowSuccess("Jugada eliminada!");
-	}
-
-	public async void asignarUsuarioId()
-	{
-		var UserIdApi = await sessionStorage.GetItemAsync<string>("UserIdApi");
-		var user = usuariosBLL.BuscarPorUserIdApi(UserIdApi);
-		if (user != null)
+		bool? confirm = await dialogService.Confirm("Seguro que desea eliminar la jugada?", "Confirme", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+		if(confirm == true)
 		{
-			ticket.UsuarioId = user.UsuarioId;
+			ticket.Jugadas.Remove(jug);
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Info,
+				Summary = "Jugada eliminada!",
+				Duration = 4000
+			});
 		}
 	}
 
 	public void nuevo()
 	{
 		ticket = new Tickets();
+		ticket.Total = 1;
+		AsignarUsuarioId();
 		jugada = new Jugadas();
 		tiposJugadas = new List<TiposJugadas>();
 		tmpLoteriaId = 0;
-		asignarUsuarioId();
 	}
 
-	public async void guardar()
-
+	public async void AsignarUsuarioId()
 	{
-		if (ticketsBLL.Guardar(ticket))
+		ticket.UsuarioId = UsuarioId;
+	}
+
+	public void guardar()
+	{
+		if (ticketsBLL.Guardar(UsuarioId, ticket))
 		{
 			nuevo();
-			toastService.ShowSuccess("Ticket guardado!");
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Success,
+				Summary = "Ticket guardado!",
+				Duration = 4000
+			});
 		}
 		else
 		{
-			toastService.ShowError("El Ticket no se pudo guardar!");
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Error,
+				Summary = "El Ticket no se pudo guardar!",
+				Duration = 4000
+			});
 		}
 	}
 
-	public void eliminar()
+	public async Task eliminar()
 	{
-		if (ticket.TicketId > 0 && ticketsBLL.Eliminar(ticket))
+		bool? confirm = await dialogService.Confirm("Seguro que desea eliminar el ticket?", "Confirme", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+		if(confirm == true)
 		{
-			nuevo();
-			toastService.ShowSuccess("Ticket eliminado!");
-		}
-		else
-		{
-			toastService.ShowError("El Ticket no se pudo eliminar!");
+			if (ticket.TicketId > 0 && ticketsBLL.Eliminar(UsuarioId, ticket))
+			{
+				nuevo();
+				notificationService.Notify(new NotificationMessage {
+					Severity = NotificationSeverity.Info,
+					Summary = "Ticket eliminado!",
+					Duration = 4000
+				});
+			}
+			else
+			{
+				notificationService.Notify(new NotificationMessage {
+					Severity = NotificationSeverity.Error,
+					Summary = "El Ticket no se pudo eliminar!",
+					Duration = 4000
+				});
+			}
 		}
 	}
 }

@@ -1,13 +1,15 @@
 ﻿@page "/Ganancia"
 @page "/Ganancia/{GananciaId:int}"
+@attribute [Authorize]
+@using System.Security.Claims
 @inject IJSRuntime JSRuntime
 @inject NavigationManager navigationManager
-@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 @inject GananciasBLL gananciasBLL
 @inject LoteriasBLL loteriasBLL
 @inject TiposJugadasBLL tiposJugadasBLL
 @inject UsuariosBLL usuariosBLL
-@inject IToastService toastService
+@inject NotificationService notificationService
+@inject DialogService dialogService
 
 <EditForm Model="ganancia" OnValidSubmit="@guardar">
 	<DataAnnotationsValidator />
@@ -41,7 +43,7 @@
 					<div class="input-group">
 						<span class="input-group-text">Loteria</span>
 						<InputSelect @bind-Value="ganancia.LoteriaId" @onclick="cargarTiposJugadas" class="form-control">
-							<option></option>
+							<option value="0"></option>
 							@foreach (var itemLoteria in loterias)
 							{
 								<option value="@itemLoteria.LoteriaId">@itemLoteria.Descripcion</option>
@@ -54,7 +56,7 @@
 					<div class="input-group">
 						<span class="input-group-text">TipoJugada</span>
 						<InputSelect @bind-Value="ganancia.TipoJugadaId" class="form-control">
-							<option></option>
+							<option value="0"></option>
 							@foreach (var itemTipoJugada in tiposJugadas)
 							{
 								<option value="@itemTipoJugada.TipoJugadaId">@itemTipoJugada.Descripcion</option>
@@ -90,29 +92,46 @@
 @code {
 	[Parameter]
 	public int GananciaId { get; set; }
+
+	[CascadingParameter]
+	public Task<AuthenticationState> authenticationState { get; set; }
+
+	public int UsuarioId { get; set; }
 	public Ganancias ganancia { get; set; }
 	public List<Loterias> loterias { get; set; }
 	public List<TiposJugadas> tiposJugadas { get; set; }
 	public int tmpLoteriaId { get; set; }
 
-	public async Task validarSesion()
-	{
-		string? userId = await sessionStorage.GetItemAsync<string>("UserIdApi");
-		if (userId == null)
-		{
-			RedirectTo("/");
-		}
-	}
 
 	public void RedirectTo(string path)
 	{
 		JSRuntime.InvokeAsync<object>("clientJsfunctions.RedirectTo", path);
 	}
 
+	protected async override Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+
+		var authState = await authenticationState;
+		var user = authState.User;
+
+		Usuarios? us = usuariosBLL.BuscarPorUserIdApi(user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value);
+		if (us != null)
+		{
+			UsuarioId = us.UsuarioId;
+		}
+		nuevo();
+		ganancia.GananciaId = GananciaId;
+		if(ganancia.GananciaId > 0)
+		{
+			buscar(ganancia.GananciaId);
+		}
+		AsignarUsuarioId();
+	}
+
 	protected override void OnInitialized()
 	{
 		base.OnInitialized();
-		validarSesion();
 
 		List<Loterias>? tmpLoterias = loteriasBLL.GetList();
 		tiposJugadas = new List<TiposJugadas>();
@@ -128,11 +147,6 @@
 		}
 
 		nuevo();
-		ganancia.GananciaId = GananciaId;
-		if(ganancia.GananciaId > 0)
-		{
-			buscar(ganancia.GananciaId);
-		}
 	}
 
 	public void btnBuscar()
@@ -162,61 +176,84 @@
 
 	public void buscar(int gananciaId)
 	{
-		Ganancias? tmpGanancia = gananciasBLL.Buscar(gananciaId);
+		Ganancias? tmpGanancia = gananciasBLL.Buscar(UsuarioId, gananciaId);
 		if (tmpGanancia != null)
 		{
 			ganancia = tmpGanancia;
 			tiposJugadas = tiposJugadasBLL.GetListByLoteria(ganancia.LoteriaId);
-			toastService.ShowSuccess("Ganancia encontrada!");
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Success,
+				Summary = "Ganancia cargada!",
+				Duration = 4000
+			});
 		}
 		else
 		{
 			nuevo();
-			toastService.ShowWarning("Ganancia no encontrada!");
-		}
-	}
-
-	public async void asignarUsuarioId()
-	{
-		var UserIdApi = await sessionStorage.GetItemAsync<string>("UserIdApi");
-		var user = usuariosBLL.BuscarPorUserIdApi(UserIdApi);
-		if (user != null)
-		{
-			ganancia.UsuarioId = user.UsuarioId;
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Warning,
+				Summary = "Ganancia no encontrada!",
+				Duration = 4000
+			});
 		}
 	}
 
 	public void nuevo()
 	{
 		ganancia = new Ganancias();
+		AsignarUsuarioId();
 		tiposJugadas = new List<TiposJugadas>();
 		tmpLoteriaId = 0;
-		asignarUsuarioId();
+	}
+
+	public async void AsignarUsuarioId()
+	{
+		ganancia.UsuarioId = UsuarioId;
 	}
 
 	public void guardar()
 	{
-		if (gananciasBLL.Guardar(ganancia))
+		if (gananciasBLL.Guardar(UsuarioId, ganancia))
 		{
 			nuevo();
-			toastService.ShowSuccess("Ganancia registrada!");
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Success,
+				Summary = "Ganancia registrada!",
+				Duration = 4000
+			});
 		}
 		else
 		{
-			toastService.ShowError("La ganancia no se pudo guardar!");
+			notificationService.Notify(new NotificationMessage {
+				Severity = NotificationSeverity.Error,
+				Summary = "La ganancia no se pudo guardar!",
+				Duration = 4000
+			});
 		}
 	}
 
-	public void eliminar()
+	public async Task eliminar()
 	{
-		if (ganancia.GananciaId > 0 && gananciasBLL.Eliminar(ganancia))
+		bool? confirm = await dialogService.Confirm("Seguro que desea eliminar la ganancia?", "Confirme", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+		if(confirm == true)
 		{
-			nuevo();
-			toastService.ShowSuccess("Ganancia eliminada!");
-		}
-		else
-		{
-			toastService.ShowError("La ganancia no se pudo eliminar!");
+			if (ganancia.GananciaId > 0 && gananciasBLL.Eliminar(UsuarioId, ganancia))
+			{
+				nuevo();
+				notificationService.Notify(new NotificationMessage {
+					Severity = NotificationSeverity.Info,
+					Summary = "Ganancia eliminada!",
+					Duration = 4000
+				});
+			}
+			else
+			{
+				notificationService.Notify(new NotificationMessage {
+					Severity = NotificationSeverity.Error,
+					Summary = "La ganancia no se pudo eliminar!",
+					Duration = 4000
+				});
+			}
 		}
 	}
 }

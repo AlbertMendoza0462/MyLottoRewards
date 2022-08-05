@@ -1,0 +1,63 @@
+﻿@page "/"
+@using System.Security.Claims
+@attribute [AllowAnonymous]
+@inject UsuariosBLL usuariosBLL
+@inject IJSRuntime JSRuntime
+@inject NavigationManager navigationManager
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>My Lotto Rewards</h1>
+
+<AuthorizeView>
+	<Authorized>
+		<Balance dashboardData="dashboardData"></Balance>
+	</Authorized>
+</AuthorizeView>
+
+<div class="row justify-content-evenly m-3 gap-3 h-75">
+	<StandingComponent colorTitulo="gold" standing="ganadores" Titulo="Standing Winners" TituloColumna="Ganado"></StandingComponent>
+	<StandingComponent colorTitulo="green" standing="perdedores" Titulo="Standing Losers" TituloColumna="Perdido"></StandingComponent>
+</div>
+
+<div class="row justify-content-evenly m-3 gap-3 h-75">
+	<Grafico></Grafico>
+</div>
+
+@code {
+	public List<Standing> ganadores { get; set; }
+	public List<Standing> perdedores { get; set; }
+	public double[] dashboardData { get; set; } = new double[6];
+
+	[CascadingParameter]
+	public Task<AuthenticationState> authenticationState { get; set; }
+	public int UsuarioId { get; set; }
+
+    protected async override Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+
+		var authState = await authenticationState;
+		var user = authState.User;
+
+		var claim = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier);
+		var UserIdApi = claim?.Value;
+		if(UserIdApi != null && !UserIdApi.Equals("")){
+			Usuarios? us = usuariosBLL.BuscarPorUserIdApi(UserIdApi);
+			if (us != null)
+			{
+				UsuarioId = us.UsuarioId;
+				dashboardData = usuariosBLL.GetDashBoardData(UsuarioId);
+			}
+		}
+	}
+
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+		var winners = usuariosBLL.GetWinners();
+		ganadores = (winners != null) ? winners : new List<Standing>();
+		var losers = usuariosBLL.GetLosers();
+		perdedores = (losers != null) ? losers : new List<Standing>();
+	}
+}
